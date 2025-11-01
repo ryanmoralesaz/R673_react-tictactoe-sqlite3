@@ -1,0 +1,573 @@
+Excellent - I can see you have solid foundation pieces here. Let me give you a comprehensive architecture overview that transforms this into a proper teaching project covering all your requirements.
+
+## **Architectural Overview: Full-Stack Tic-Tac-Toe**
+
+### **Core Philosophy: Server-Authoritative Game Logic**
+
+The key insight here is that the server should be the **single source of truth** for game state. This is excellent for teaching because it demonstrates:
+- Why client-side validation alone is insufficient (security)
+- How to think about state management across network boundaries
+- The difference between optimistic UI updates and authoritative state
+
+---
+
+## **1. Project Structure**
+
+```
+tic-tac-toe-fullstack/
+├── client/                    # Vite + React
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Board.jsx
+│   │   │   ├── GameCell.jsx
+│   │   │   ├── PlayerIndicator.jsx
+│   │   │   ├── GameHistory.jsx
+│   │   │   ├── Leaderboard.jsx
+│   │   │   └── Auth/
+│   │   │       ├── Login.jsx
+│   │   │       └── Register.jsx
+│   │   ├── context/
+│   │   │   ├── AuthContext.jsx
+│   │   │   └── GameContext.jsx
+│   │   ├── hooks/
+│   │   │   ├── useAuth.js
+│   │   │   ├── useGame.js
+│   │   │   └── useWebSocket.js (for multiplayer later)
+│   │   ├── services/
+│   │   │   ├── api.js           # Axios/fetch wrapper
+│   │   │   └── gameService.js
+│   │   ├── styles/
+│   │   │   ├── main.scss        # SCSS for learning
+│   │   │   └── tailwind.css     # Tailwind for utility
+│   │   └── App.jsx
+│   ├── package.json
+│   └── vite.config.js
+│
+└── server/                    # Express + SQLite
+    ├── src/
+    │   ├── config/
+    │   │   ├── database.js
+    │   │   └── jwt.js
+    │   ├── middleware/
+    │   │   ├── auth.js
+    │   │   ├── cors.js
+    │   │   └── errorHandler.js
+    │   ├── models/
+    │   │   ├── User.js
+    │   │   ├── Game.js
+    │   │   └── GameMove.js
+    │   ├── routes/
+    │   │   ├── auth.routes.js
+    │   │   ├── game.routes.js
+    │   │   └── leaderboard.routes.js
+    │   ├── services/
+    │   │   ├── authService.js
+    │   │   └── gameService.js    # THE CORE GAME LOGIC
+    │   ├── utils/
+    │   │   ├── gameLogic.js      # Win checking, validation
+    │   │   └── validators.js
+    │   └── server.js
+    ├── database/
+    │   ├── migrations/
+    │   ├── seeds/
+    │   └── tictactoe.db
+    └── package.json
+```
+
+---
+
+## **2. Database Schema Design**
+
+```sql
+-- users table
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,  -- bcrypt hashed
+  created_at INTEGER NOT NULL,
+  wins INTEGER DEFAULT 0,
+  losses INTEGER DEFAULT 0,
+  draws INTEGER DEFAULT 0
+);
+
+-- games table
+CREATE TABLE games (
+  id TEXT PRIMARY KEY,
+  player1_id TEXT NOT NULL,
+  player2_id TEXT,              -- NULL for AI games
+  current_board TEXT NOT NULL,  -- JSON string: ["X","O",null,...]
+  current_turn TEXT NOT NULL,   -- "X" or "O"
+  status TEXT NOT NULL,         -- "active", "completed", "abandoned"
+  winner TEXT,                  -- "X", "O", "draw", null
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  move_count INTEGER DEFAULT 0,
+  FOREIGN KEY (player1_id) REFERENCES users(id),
+  FOREIGN KEY (player2_id) REFERENCES users(id)
+);
+
+-- game_moves table (for replay capability)
+CREATE TABLE game_moves (
+  id TEXT PRIMARY KEY,
+  game_id TEXT NOT NULL,
+  move_number INTEGER NOT NULL,
+  player TEXT NOT NULL,        -- "X" or "O"
+  position INTEGER NOT NULL,   -- 0-8
+  board_state TEXT NOT NULL,   -- JSON snapshot after this move
+  timestamp INTEGER NOT NULL,
+  FOREIGN KEY (game_id) REFERENCES games(id)
+);
+
+-- Create indexes for performance
+CREATE INDEX idx_games_player1 ON games(player1_id);
+CREATE INDEX idx_games_player2 ON games(player2_id);
+CREATE INDEX idx_games_status ON games(status);
+CREATE INDEX idx_game_moves_game_id ON game_moves(game_id);
+CREATE INDEX idx_users_wins ON users(wins DESC);
+```
+
+**Why this schema?**
+- `current_board` as JSON string lets you reconstruct game state from DB
+- `game_moves` table enables replay feature (great for debugging and learning)
+- Separate `status` field allows abandoned games to be cleaned up
+- Win/loss tracking on users enables leaderboard without expensive queries
+
+---
+
+## **3. Server-Side Game Logic (The Heart)**
+
+```javascript
+// server/src/utils/gameLogic.js
+
+export const WINNING_COMBINATIONS = [
+  [0, 1, 2], // top row
+  [3, 4, 5], // middle row
+  [6, 7, 8], // bottom row
+  [0, 3, 6], // left column
+  [1, 4, 7], // middle column
+  [2, 5, 8], // right column
+  [0, 4, 8], // diagonal \
+  [2, 4, 6], // diagonal /
+];
+
+export function checkForWin(board) {
+  // board is array: ["X", "O", null, "X", ...]
+  
+  for (const combo of WINNING_COMBINATIONS) {
+    const [a, b, c] = combo;
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+      return {
+        winner: board[a],
+        winningCombination: combo
+      };
+    }
+  }
+  
+  // Check for draw
+  if (board.every(cell => cell !== null)) {
+    return { winner: 'draw', winningCombination: null };
+  }
+  
+  return { winner: null, winningCombination: null };
+}
+
+export function isValidMove(board, position, currentTurn) {
+  // Validation rules
+  if (position < 0 || position > 8) return false;
+  if (board[position] !== null) return false;
+  
+  return true;
+}
+
+export function applyMove(board, position, player) {
+  // Returns NEW board (immutability)
+  const newBoard = [...board];
+  newBoard[position] = player;
+  return newBoard;
+}
+```
+
+**Why server-side?**
+1. **Security**: Client can't cheat by manipulating win conditions
+2. **Consistency**: Single implementation, no client/server drift
+3. **Multiplayer Ready**: Server already authoritative for websockets
+4. **Learning**: Forces proper API design and state management
+
+---
+
+## **4. API Design (RESTful)**
+
+### **Authentication Endpoints**
+```
+POST   /api/auth/register
+POST   /api/auth/login
+POST   /api/auth/logout
+GET    /api/auth/me (get current user)
+```
+
+### **Game Endpoints**
+```
+POST   /api/games                # Start new game
+GET    /api/games/:id            # Get game state
+POST   /api/games/:id/move       # Make a move
+GET    /api/games/:id/history    # Get move history
+GET    /api/games/user/:userId   # Get user's games
+DELETE /api/games/:id            # Forfeit/abandon game
+```
+
+### **Leaderboard Endpoints**
+```
+GET    /api/leaderboard          # Top players by wins
+GET    /api/leaderboard/user/:userId  # User's stats
+```
+
+**Example API Flow:**
+
+```javascript
+// Client makes move
+POST /api/games/abc123/move
+{
+  "position": 4,
+  "player": "X"
+}
+
+// Server response
+{
+  "success": true,
+  "game": {
+    "id": "abc123",
+    "board": ["X", "O", null, null, "X", null, null, null, null],
+    "currentTurn": "O",
+    "status": "active",
+    "moveCount": 3
+  },
+  "gameResult": null  // or { winner: "X", winningCombination: [0,4,8] }
+}
+```
+
+---
+
+## **5. React Architecture (Client)**
+
+### **Context Pattern for State Management**
+
+```javascript
+// GameContext.jsx
+export const GameContext = createContext();
+
+export function GameProvider({ children }) {
+  const [currentGame, setCurrentGame] = useState(null);
+  const [gameHistory, setGameHistory] = useState([]);
+  const { token } = useAuth();  // From AuthContext
+  
+  const startNewGame = async () => {
+    const response = await fetch('/api/games', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    const game = await response.json();
+    setCurrentGame(game);
+  };
+  
+  const makeMove = async (position) => {
+    // Optimistic update (for learning)
+    const optimisticBoard = [...currentGame.board];
+    optimisticBoard[position] = currentGame.currentTurn;
+    setCurrentGame(prev => ({ ...prev, board: optimisticBoard }));
+    
+    try {
+      const response = await fetch(`/api/games/${currentGame.id}/move`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ position, player: currentGame.currentTurn })
+      });
+      
+      const result = await response.json();
+      
+      // Server confirms or corrects
+      setCurrentGame(result.game);
+      
+      if (result.gameResult) {
+        handleGameEnd(result.gameResult);
+      }
+    } catch (error) {
+      // Rollback optimistic update
+      setCurrentGame(prev => prev);
+    }
+  };
+  
+  return (
+    <GameContext.Provider value={{ 
+      currentGame, 
+      startNewGame, 
+      makeMove,
+      gameHistory 
+    }}>
+      {children}
+    </GameContext.Provider>
+  );
+}
+```
+
+### **Component Hierarchy**
+
+```jsx
+<App>
+  <AuthProvider>
+    <GameProvider>
+      <Router>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/game" element={
+          <ProtectedRoute>
+            <GameBoard />
+            <GameHistory />
+          </ProtectedRoute>
+        } />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+      </Router>
+    </GameProvider>
+  </AuthProvider>
+</App>
+```
+
+---
+
+## **6. JWT Authentication Flow**
+
+```javascript
+// Server middleware
+export function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) return res.sendStatus(401);
+  
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.sendStatus(403);
+    req.user = user;  // { id, username, email }
+    next();
+  });
+}
+
+// Client storage
+localStorage.setItem('token', response.token);
+
+// Client axios interceptor
+axios.interceptors.request.use(config => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+```
+
+**Teaching Points:**
+- Token stored client-side (localStorage vs httpOnly cookies debate)
+- Stateless authentication (server doesn't store sessions)
+- Token expiration and refresh strategies
+
+---
+
+## **7. CORS Configuration**
+
+```javascript
+// server/src/middleware/cors.js
+import cors from 'cors';
+
+export const corsOptions = {
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,  // Allow cookies
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+// In server.js
+app.use(cors(corsOptions));
+```
+
+**Teaching Points:**
+- Why CORS exists (browser security)
+- Preflight requests (OPTIONS)
+- Credentials and cookies across origins
+
+---
+
+## **8. Styling Hybrid Approach**
+
+```scss
+// SCSS for component-specific styles
+.game-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  
+  .game-cell {
+    aspect-ratio: 1;
+    border: 2px solid var(--border-color);
+    
+    &:hover:not(.filled) {
+      background-color: var(--hover-bg);
+    }
+    
+    &.winning-cell {
+      animation: pulse 0.5s ease-in-out;
+    }
+  }
+}
+```
+
+```jsx
+// Tailwind for layout and utilities
+<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
+  <div className="bg-white rounded-lg shadow-2xl p-8">
+    <Board className="game-board" />
+  </div>
+</div>
+```
+
+**Teaching Value:** Students see when to use each approach.
+
+---
+
+## **9. Multiplayer Extension (WebSockets)**
+
+For the future multiplayer feature:
+
+```javascript
+// Server
+import { WebSocketServer } from 'ws';
+
+const wss = new WebSocketServer({ server });
+
+const games = new Map(); // gameId -> { players: [], board: [] }
+
+wss.on('connection', (ws, req) => {
+  const gameId = new URL(req.url, 'ws://base').searchParams.get('gameId');
+  
+  ws.on('message', (message) => {
+    const data = JSON.parse(message);
+    
+    if (data.type === 'MOVE') {
+      // Server validates and broadcasts
+      const game = games.get(gameId);
+      const result = processMove(game, data.position, data.player);
+      
+      // Broadcast to both players
+      game.players.forEach(player => {
+        player.send(JSON.stringify({
+          type: 'GAME_UPDATE',
+          board: result.board,
+          gameResult: result.gameResult
+        }));
+      });
+    }
+  });
+});
+```
+
+**Client:**
+```javascript
+// hooks/useWebSocket.js
+export function useWebSocket(gameId) {
+  const [socket, setSocket] = useState(null);
+  const [gameState, setGameState] = useState(null);
+  
+  useEffect(() => {
+    const ws = new WebSocket(`ws://localhost:3000?gameId=${gameId}`);
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'GAME_UPDATE') {
+        setGameState(data);
+      }
+    };
+    
+    setSocket(ws);
+    return () => ws.close();
+  }, [gameId]);
+  
+  const sendMove = (position, player) => {
+    socket.send(JSON.stringify({ type: 'MOVE', position, player }));
+  };
+  
+  return { gameState, sendMove };
+}
+```
+
+**Alternative:** Socket.io (easier API, more features, heavier)
+
+---
+
+## **10. Key Learning Outcomes**
+
+### **Frontend:**
+- **useState**: Local component state (hover effects, form inputs)
+- **useContext**: Global state (auth, current game)
+- **useRef**: DOM manipulation (animating winning cells)
+- **Custom hooks**: Reusable logic (useAuth, useGame)
+
+### **Backend:**
+- **Separation of concerns**: Routes → Services → Models
+- **Stateless design**: JWT eliminates session storage
+- **Input validation**: Never trust client
+- **Database modeling**: Normalization vs denormalization trade-offs
+
+### **Full-Stack Concepts:**
+- **API design**: RESTful principles
+- **State synchronization**: Client optimistic, server authoritative
+- **Error handling**: Network failures, race conditions
+- **Security**: SQL injection prevention (parameterized queries), XSS, CORS
+
+---
+
+## **11. Implementation Priorities**
+
+### **Phase 1: MVP (Single Player vs AI)**
+1. Basic Express server + SQLite
+2. User registration/login with JWT
+3. React game board with local state
+4. Server-side move validation
+5. Win detection on server
+6. Basic styling with Tailwind
+
+### **Phase 2: Data Persistence**
+1. Save game state to DB
+2. Game history view
+3. Leaderboard
+4. User profile with stats
+
+### **Phase 3: Polish**
+1. SCSS animations for winning combos
+2. Move replay feature
+3. Abandoned game cleanup
+4. Error boundaries
+
+### **Phase 4: Multiplayer (Optional)**
+1. WebSocket integration
+2. Game lobbies
+3. Real-time move synchronization
+4. Spectator mode
+
+---
+
+## **Final Thoughts**
+
+This architecture gives you clear **separation of concerns** while demonstrating how frontend and backend communicate through a well-defined API contract. The server-authoritative game logic is the centerpiece - it forces students to think about:
+
+1. **Trust boundaries**: Where does validation happen?
+2. **State management**: Who owns the truth?
+3. **Network resilience**: What if the request fails?
+4. **Scalability**: Could this support 1000 concurrent games?
+
+Your existing tic-tac-toe code provides the **game rules** (lines 121-162), which you'll extract into `gameLogic.js` on the server. The SQLite foundation you already have will extend nicely to the game tables.
+
+The beauty is that every technology you wanted to teach has a **clear purpose** in this architecture - nothing is forced. React hooks manage complexity, Express provides structure, SQLite persists state, JWT enables stateless auth, CORS protects users, and WebSockets would enable real-time features.
