@@ -1,0 +1,27 @@
+{
+  "name": "1e0cdc",
+  "version": "1.0.0",
+  "description": "A sqlite3 test with express",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gh-rmaz:ryanmoralesaz/1E0CDC.git"
+  },
+  "keywords": [
+    "sqlite3",
+    "express",
+    "databases"
+  ],
+  "author": "ryan morales",
+  "license": "CC0-1.0",
+  "dependencies": {
+    "sqlite3": "^5.1.7",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "better-sqlite3": "^12.4.1"
+  }
+}
