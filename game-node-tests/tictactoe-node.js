@@ -43,12 +43,12 @@ function checkForWin(board) {
       };
     }
   }
-  
+
   // Check for draw (board full, no winner)
   if (board.every(cell => cell !== null)) {
     return { winner: 'DRAW', winningCombo: null };
   }
-  
+
   // Game still active
   return { winner: null, winningCombo: null };
 }
@@ -58,12 +58,12 @@ function isValidMove(board, position) {
   if (position < 0 || position > 8) {
     return { valid: false, reason: 'Position must be between 0-8' };
   }
-  
+
   // Position must be empty
   if (board[position] !== null) {
     return { valid: false, reason: 'Position already occupied' };
   }
-  
+
   return { valid: true };
 }
 
@@ -85,17 +85,17 @@ function switchPlayer(currentPlayer) {
 function displayBoard(board, winningCombo = null) {
   console.clear();
   console.log('\n  TIC-TAC-TOE\n');
-  
+
   // Display with position numbers when empty, symbols when filled
   for (let row = 0; row < 3; row++) {
     let rowString = ' ';
     for (let col = 0; col < 3; col++) {
       const index = row * 3 + col;
       const cell = board[index];
-      
+
       // If cell is part of winning combo, highlight it
       const isWinningCell = winningCombo && winningCombo.includes(index);
-      
+
       if (cell === null) {
         // Show position number
         rowString += ` ${index} `;
@@ -105,7 +105,7 @@ function displayBoard(board, winningCombo = null) {
       } else {
         rowString += ` ${cell} `;
       }
-      
+
       if (col < 2) rowString += '|';
     }
     console.log(rowString);
@@ -132,7 +132,7 @@ function displayGameResult(result) {
 function promptMove() {
   displayBoard(gameState.board);
   console.log(`Player ${gameState.currentPlayer}'s turn`);
-  
+
   rl.question('Enter position (0-8) or "q" to quit: ', (input) => {
     // Handle quit
     if (input.toLowerCase() === 'q') {
@@ -140,17 +140,17 @@ function promptMove() {
       rl.close();
       return;
     }
-    
+
     // Parse input
     const position = parseInt(input, 10);
-    
+
     // Validate input is a number
     if (isNaN(position)) {
       console.log('Invalid input. Please enter a number between 0-8.');
       setTimeout(promptMove, 1000);
       return;
     }
-    
+
     // Validate move
     const validation = isValidMove(gameState.board, position);
     if (!validation.valid) {
@@ -158,22 +158,22 @@ function promptMove() {
       setTimeout(promptMove, 1000);
       return;
     }
-    
+
     // Apply move
     gameState.board = applyMove(gameState.board, position, gameState.currentPlayer);
-    
+
     // Check for win/draw
     const result = checkForWin(gameState.board);
-    
+
     if (result.winner) {
       // Game over
       gameState.gameOver = true;
       gameState.winner = result.winner;
       gameState.winningCombo = result.winningCombo;
-      
+
       displayBoard(gameState.board, result.winningCombo);
       displayGameResult(result);
-      
+
       rl.question('\nPlay again? (y/n): ', (answer) => {
         if (answer.toLowerCase() === 'y') {
           resetGame();
