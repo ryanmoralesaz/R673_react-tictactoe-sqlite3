@@ -1,9 +1,9 @@
 // terminal-tictactoe.js
-const readline = require('readline');
+const readline = require("readline");
 
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
 
 // ============================================
@@ -11,10 +11,10 @@ const rl = readline.createInterface({
 // ============================================
 const gameState = {
   board: Array(9).fill(null),
-  currentPlayer: 'X',
+  currentPlayer: "X",
   gameOver: false,
   winner: null,
-  winningCombo: null
+  winningCombo: null,
 };
 
 // ============================================
@@ -29,7 +29,7 @@ const WINNING_COMBINATIONS = [
   [1, 4, 7], // middle column
   [2, 5, 8], // right column
   [0, 4, 8], // diagonal \
-  [2, 4, 6]  // diagonal /
+  [2, 4, 6], // diagonal /
 ];
 
 function checkForWin(board) {
@@ -39,14 +39,14 @@ function checkForWin(board) {
     if (board[a] && board[a] === board[b] && board[a] === board[c]) {
       return {
         winner: board[a],
-        winningCombo: combo
+        winningCombo: combo,
       };
     }
   }
 
   // Check for draw (board full, no winner)
-  if (board.every(cell => cell !== null)) {
-    return { winner: 'DRAW', winningCombo: null };
+  if (board.every((cell) => cell !== null)) {
+    return { winner: "DRAW", winningCombo: null };
   }
 
   // Game still active
@@ -56,12 +56,12 @@ function checkForWin(board) {
 function isValidMove(board, position) {
   // Position must be 0-8
   if (position < 0 || position > 8) {
-    return { valid: false, reason: 'Position must be between 0-8' };
+    return { valid: false, reason: "Position must be between 0-8" };
   }
 
   // Position must be empty
   if (board[position] !== null) {
-    return { valid: false, reason: 'Position already occupied' };
+    return { valid: false, reason: "Position already occupied" };
   }
 
   return { valid: true };
@@ -75,7 +75,7 @@ function applyMove(board, position, player) {
 }
 
 function switchPlayer(currentPlayer) {
-  return currentPlayer === 'X' ? 'O' : 'X';
+  return currentPlayer === "X" ? "O" : "X";
 }
 
 // ============================================
@@ -84,11 +84,11 @@ function switchPlayer(currentPlayer) {
 
 function displayBoard(board, winningCombo = null) {
   console.clear();
-  console.log('\n  TIC-TAC-TOE\n');
+  console.log("\n  TIC-TAC-TOE\n");
 
   // Display with position numbers when empty, symbols when filled
   for (let row = 0; row < 3; row++) {
-    let rowString = ' ';
+    let rowString = " ";
     for (let col = 0; col < 3; col++) {
       const index = row * 3 + col;
       const cell = board[index];
@@ -106,23 +106,23 @@ function displayBoard(board, winningCombo = null) {
         rowString += ` ${cell} `;
       }
 
-      if (col < 2) rowString += '|';
+      if (col < 2) rowString += "|";
     }
     console.log(rowString);
-    if (row < 2) console.log('  -----------');
+    if (row < 2) console.log("  -----------");
   }
-  console.log('');
+  console.log("");
 }
 
 function displayGameResult(result) {
-  console.log('='.repeat(40));
-  if (result.winner === 'DRAW') {
-    console.log('  GAME OVER: It\'s a DRAW!');
+  console.log("=".repeat(40));
+  if (result.winner === "DRAW") {
+    console.log("  GAME OVER: It's a DRAW!");
   } else {
     console.log(`  GAME OVER: Player ${result.winner} WINS!`);
-    console.log(`  Winning combo: ${result.winningCombo.join(', ')}`);
+    console.log(`  Winning combo: ${result.winningCombo.join(", ")}`);
   }
-  console.log('='.repeat(40));
+  console.log("=".repeat(40));
 }
 
 // ============================================
@@ -135,8 +135,8 @@ function promptMove() {
 
   rl.question('Enter position (0-8) or "q" to quit: ', (input) => {
     // Handle quit
-    if (input.toLowerCase() === 'q') {
-      console.log('Thanks for playing!');
+    if (input.toLowerCase() === "q") {
+      console.log("Thanks for playing!");
       rl.close();
       return;
     }
@@ -146,7 +146,7 @@ function promptMove() {
 
     // Validate input is a number
     if (isNaN(position)) {
-      console.log('Invalid input. Please enter a number between 0-8.');
+      console.log("Invalid input. Please enter a number between 0-8.");
       setTimeout(promptMove, 1000);
       return;
     }
@@ -160,7 +160,11 @@ function promptMove() {
     }
 
     // Apply move
-    gameState.board = applyMove(gameState.board, position, gameState.currentPlayer);
+    gameState.board = applyMove(
+      gameState.board,
+      position,
+      gameState.currentPlayer,
+    );
 
     // Check for win/draw
     const result = checkForWin(gameState.board);
@@ -174,12 +178,12 @@ function promptMove() {
       displayBoard(gameState.board, result.winningCombo);
       displayGameResult(result);
 
-      rl.question('\nPlay again? (y/n): ', (answer) => {
-        if (answer.toLowerCase() === 'y') {
+      rl.question("\nPlay again? (y/n): ", (answer) => {
+        if (answer.toLowerCase() === "y") {
           resetGame();
           promptMove();
         } else {
-          console.log('Thanks for playing!');
+          console.log("Thanks for playing!");
           rl.close();
         }
       });
@@ -193,7 +197,7 @@ function promptMove() {
 
 function resetGame() {
   gameState.board = Array(9).fill(null);
-  gameState.currentPlayer = 'X';
+  gameState.currentPlayer = "X";
   gameState.gameOver = false;
   gameState.winner = null;
   gameState.winningCombo = null;
@@ -203,5 +207,5 @@ function resetGame() {
 // START GAME
 // ============================================
 
-console.log('Welcome to Tic-Tac-Toe!');
+console.log("Welcome to Tic-Tac-Toe!");
 promptMove();

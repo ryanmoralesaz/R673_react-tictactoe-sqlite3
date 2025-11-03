@@ -1,25 +1,27 @@
-import express from 'express';
-import cors from 'cors';
-import gameRoutes from './routes/game.routes.js';
+import express from "express";
+import cors from "cors";
+import gameRoutes from "./routes/game.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
-}))
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
 
 // routes
-app.use('/api/games', gameRoutes);
+app.use("/api/games", gameRoutes);
 
-app.get('/api/health', (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({
-    status: 'ok',
-    message: 'Server is running',
-    timestamp: new Date().toISOString()
+    status: "ok",
+    message: "Server is running",
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -27,7 +29,7 @@ app.get('/api/health', (req, res) => {
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    error: 'Route not found'
+    error: "Route not found",
   });
 });
 
@@ -36,7 +38,7 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
     success: false,
-    error: 'Internal server error'
+    error: "Internal server error",
   });
 });
 
@@ -45,4 +47,3 @@ app.listen(PORT, () => {
   console.log(`CORS
   enabled for localhost:${PORT} `);
 });
-
