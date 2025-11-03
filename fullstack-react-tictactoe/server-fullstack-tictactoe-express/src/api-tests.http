@@ -1,0 +1,39 @@
+### Health Check
+
+GET http://localhost:3000/api/health HTTP/1.1
+
+
+### Create a new game
+
+POST http://localhost:3000/api/games HTTP/1.1
+Content-Type: application/json
+
+{
+  "playerId": "test-player-123"
+}
+
+
+### Make a move (replace GAME-ID with actual ID from above)
+
+POST http://localhost:3000/api/games/a9fcd394-8600-4491-a71b-8942492ca7a2/move HTTP/1.1
+Content-Type: application/json
+
+{
+  "position": 4,
+  "player": "X"
+}
+
+
+### Get game state
+
+GET http://localhost:3000/api/games/GAME-ID HTTP/1.1
+
+
+### Get all games
+
+GET http://localhost:3000/api/games HTTP/1.1
+
+
+### Delete a game
+
+DELETE http://localhost:3000/api/games/GAME-ID HTTP/1.1

@@ -1,0 +1,24 @@
+{
+  "name": "tictactoe-server",
+  "version": "1.0.0",
+  "description": "Tic-Tac-Toe game with SQLite",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "keywords": [
+    "tictactoe",
+    "express",
+    "sqlite"
+  ],
+  "author": "Ryan Morales",
+  "license": "MIT",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^13.0.0"
+  }
+}
