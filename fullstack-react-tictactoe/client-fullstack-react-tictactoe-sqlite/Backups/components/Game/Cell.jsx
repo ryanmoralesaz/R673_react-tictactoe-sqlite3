@@ -10,10 +10,10 @@
 export default function Cell({ value, onClick, isWinning, position }) {
   return (
     <button
-      className={`cell ${value ? 'filled' : ''} ${isWinning ? 'winning' : ''}`}
+      className={`cell ${value ? "filled" : ""} ${isWinning ? "winning" : ""}`}
       onClick={onClick}
       disabled={value !== null}
-      aria-label={`Cell ${position}, ${value || 'empty'}`}
+      aria-label={`Cell ${position}, ${value || "empty"}`}
     >
       {value}
     </button>

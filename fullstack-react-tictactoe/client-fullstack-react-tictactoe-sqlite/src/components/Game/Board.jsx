@@ -10,6 +10,7 @@ export default function Board({ board, onCellClick, winningCombo }) {
           position={index}
           key={index}
           onClick={() => onCellClick(index)}
+          isWinning={winningCombo?.includes(index)}
         />
       ))}
     </div>

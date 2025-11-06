@@ -5,7 +5,7 @@
  */
 export default function GameStatus({ currentPlayer, winner, gameOver }) {
   if (gameOver) {
-    if (winner === 'DRAW') {
+    if (winner === "DRAW") {
       return (
         <div className="game-status game-over draw">
           <h2>It's a Draw!</h2>
@@ -13,7 +13,10 @@ export default function GameStatus({ currentPlayer, winner, gameOver }) {
       );
     }
     return (
-      <div className={`game-status game-over winner-${winner.toLowerCase()}`}>
+      <div
+        className={`game-status game-over 
+winner-${winner.toLowerCase()}`}
+      >
         <h2>Player {winner} Wins!</h2>
       </div>
     );

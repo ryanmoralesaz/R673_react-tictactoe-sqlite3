@@ -1,14 +1,14 @@
 // client/src/components/Game/Game.jsx
-import { useState } from 'react';
-import Board from './Board';
-import GameStatus from './GameStatus';
+import { useState } from "react";
+import Board from "./Board";
+import GameStatus from "./GameStatus";
 import {
   checkForWin,
   isValidMove,
   applyMove,
   switchPlayer,
-  createInitialGameState
-} from '../../utils/gameLogic';
+  createInitialGameState,
+} from "../../utils/gameLogic";
 
 export default function Game() {
   // State management with useState
@@ -27,7 +27,7 @@ export default function Game() {
     // Validate the move
     const validation = isValidMove(board, position);
     if (!validation.valid) {
-      console.log('Invalid move:', validation.reason);
+      console.log("Invalid move:", validation.reason);
       return;
     }
 
@@ -40,10 +40,12 @@ export default function Game() {
     // Update state
     setGameState({
       board: newBoard,
-      currentPlayer: result.winner ? currentPlayer : switchPlayer(currentPlayer),
+      currentPlayer: result.winner
+        ? currentPlayer
+        : switchPlayer(currentPlayer),
       gameOver: result.winner !== null,
       winner: result.winner,
-      winningCombo: result.winningCombo
+      winningCombo: result.winningCombo,
     });
   };
 
@@ -70,10 +72,7 @@ export default function Game() {
         winningCombo={winningCombo}
       />
 
-      <button
-        className="reset-button"
-        onClick={handleReset}
-      >
+      <button className="reset-button" onClick={handleReset}>
         New Game
       </button>
     </div>
