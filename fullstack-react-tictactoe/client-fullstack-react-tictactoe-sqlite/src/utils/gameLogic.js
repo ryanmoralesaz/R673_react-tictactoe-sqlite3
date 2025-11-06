@@ -24,33 +24,32 @@ export function checkForWin(board) {
     if (board[a] && board[a] === board[b] && board[a] === board[c]) {
       return {
         winner: board[a],
-        winningCombo: combo
+        winningCombo: combo,
       };
     }
   }
 
   // Check for draw (board full, no winner)
-  if (board.every(cell => cell !== null)) {
-    return { winner: 'DRAW', winningCombo: null };
+  if (board.every((cell) => cell !== null)) {
+    return { winner: "DRAW", winningCombo: null };
   }
 
   // Game still active
   return { winner: null, winningCombo: null };
 }
-
 /**
  * Validate if a move is legal
- * @param {Array} board 
+ * @param {Array} board
  * @param {number} position - 0-8
  * @returns {Object} { valid: boolean, reason?: string }
  */
 export function isValidMove(board, position) {
   if (position < 0 || position > 8) {
-    return { valid: false, reason: 'Position must be between 0-8' };
+    return { valid: false, reason: "Position must be between 0-8" };
   }
 
   if (board[position] !== null) {
-    return { valid: false, reason: 'Position already occupied' };
+    return { valid: false, reason: "Position already occupied" };
   }
 
   return { valid: true };
@@ -58,8 +57,8 @@ export function isValidMove(board, position) {
 
 /**
  * Apply a move to the board (returns NEW board, immutable)
- * @param {Array} board 
- * @param {number} position 
+ * @param {Array} board
+ * @param {number} position
  * @param {string} player - "X" or "O"
  * @returns {Array} New board array
  */
@@ -71,11 +70,11 @@ export function applyMove(board, position, player) {
 
 /**
  * Switch player turn
- * @param {string} currentPlayer 
+ * @param {string} currentPlayer
  * @returns {string} "X" or "O"
  */
 export function switchPlayer(currentPlayer) {
-  return currentPlayer === 'X' ? 'O' : 'X';
+  return currentPlayer === "X" ? "O" : "X";
 }
 
 /**
@@ -85,9 +84,9 @@ export function switchPlayer(currentPlayer) {
 export function createInitialGameState() {
   return {
     board: Array(9).fill(null),
-    currentPlayer: 'X',
+    currentPlayer: "X",
     gameOver: false,
     winner: null,
-    winningCombo: null
+    winningCombo: null,
   };
 }
